@@ -67,6 +67,8 @@
 #include "switch.h"
 #include "audio_processing.h"
 #include "tuning.h"
+#include "tx_queue.h"
+#include "uart_driver.h"
 
 /*Global Variables*/
 char date_ascii[]="04-21-2021";
@@ -75,6 +77,10 @@ char min_ascii[]="05:";
 char sec_ascii[]="05";
 
 uint8_t output_mode = 0;
+
+
+uint8_t notes_log[8][3];
+uint8_t notes_log_index = 0;
 
 typedef enum {
     C1      = 32,
@@ -110,7 +116,6 @@ int main(void)
 
     CLK_Init();
 
-    init_switch();
 
     init_rtc();
 
@@ -131,6 +136,7 @@ int main(void)
 
     //push-button init
     init_switch();
+    uart_init();
 
     NVIC->ISER[1] |= 1 << ((PORT4_IRQn) & 31);
     init_hanning_window();
@@ -141,6 +147,22 @@ int main(void)
     float error;
     note_t out_note;
     uint8_t prevmode = 0;
+
+    while (tx_length()) {
+        if (get_uart_transmit_ready()) {
+            uint8_t tx_byte;
+            tx_dequeue(&tx_byte, 1);
+            uart_transmit(tx_byte);
+        }
+    }
+    tx_enqueue("Press 'l' to print log: \r\n", 26);
+    while (tx_length()) {
+        if (get_uart_transmit_ready()) {
+            uint8_t tx_byte;
+            tx_dequeue(&tx_byte, 1);
+            uart_transmit(tx_byte);
+        }
+    }
 
     while(1)
     {
@@ -187,6 +209,39 @@ int main(void)
             }
         }
 
+        //Logging
+        if (get_uart_received()) {
+            clear_uart_received();
+            uint8_t get_log = get_uart_byte();
+            if (get_log == 'l') {
+                int j = (notes_log_index + 1) & 0x7;
+                tx_enqueue("Last 8 notes played (least to most recent): \r\n", 46);
+                while (1) {
+                    tx_enqueue(notes_log[j], strlen((char *)notes_log[j]));
+                    tx_enqueue("\r\n", 2);
+                    j = (j + 1) & 0x07;
+                    if (j == notes_log_index + 1) {
+                        break;
+                    }
+                }
+
+                while (tx_length()) {
+                    if (get_uart_transmit_ready()) {
+                        uint8_t tx_byte;
+                        tx_dequeue(&tx_byte, 1);
+                        uart_transmit(tx_byte);
+                    }
+                }
+                tx_enqueue("Press 'l' to print log: \r\n", 26);
+                while (tx_length()) {
+                    if (get_uart_transmit_ready()) {
+                        uint8_t tx_byte;
+                        tx_dequeue(&tx_byte, 1);
+                        uart_transmit(tx_byte);
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -256,10 +311,13 @@ void display_parameters(int32_t freq, out_note_t note, uint32_t octv, float err)
         if(note == C_SHARP || note == D_SHARP || note == F_SHARP || note == G_SHARP || note == A_SHARP)
         {
             LCD_StringWrite(SHARP_X_POS, SHARP_Y_POS, ~(ILI9341_GREEN), 4, "#");
+            notes_log[notes_log_index][1] = '#';
+            notes_log[notes_log_index][2] = 0;
         }
         else
         {
             LCD_Rectangle(SHARP_X_POS, SHARP_Y_POS-32, SHARP_X_POS+20, SHARP_Y_POS, 0);
+            notes_log[notes_log_index][1] = 0;
         }
 
         switch(note)
@@ -267,34 +325,48 @@ void display_parameters(int32_t freq, out_note_t note, uint32_t octv, float err)
             case C_SHARP:
             case C1:
                 LCD_StringWrite(TONE_X_POS, TONE_Y_POS, ~(ILI9341_GREEN), 8, "C");
+                notes_log[notes_log_index++][0] = 'C';
+                notes_log_index &= 0x7;
                 break;
 
             case D_SHARP:
             case D1:
                 LCD_StringWrite(TONE_X_POS, TONE_Y_POS, ~(ILI9341_GREEN), 8, "D");
+                notes_log[notes_log_index++][0] = 'D';
+                notes_log_index &= 0x7;
                 break;
 
             case E1:
                 LCD_StringWrite(TONE_X_POS, TONE_Y_POS, ~(ILI9341_GREEN), 8, "E");
+                notes_log[notes_log_index++][0] = 'E';
+                notes_log_index &= 0x7;
                 break;
 
             case F_SHARP:
             case F1:
                 LCD_StringWrite(TONE_X_POS, TONE_Y_POS, ~(ILI9341_GREEN), 8, "F");
+                notes_log[notes_log_index++][0] = 'F';
+                notes_log_index &= 0x7;
                 break;
 
             case G_SHARP:
             case G1:
                 LCD_StringWrite(TONE_X_POS, TONE_Y_POS, ~(ILI9341_GREEN), 8, "G");
+                notes_log[notes_log_index++][0] = 'G';
+                notes_log_index &= 0x7;
                 break;
 
             case A_SHARP:
             case A1:
                 LCD_StringWrite(TONE_X_POS, TONE_Y_POS, ~(ILI9341_GREEN), 8, "A");
+                notes_log[notes_log_index++][0] = 'A';
+                notes_log_index &= 0x7;
                 break;
 
             case B1:
                 LCD_StringWrite(TONE_X_POS, TONE_Y_POS, ~(ILI9341_GREEN), 8, "B");
+                notes_log[notes_log_index++][0] = 'B';
+                notes_log_index &= 0x7;
                 break;
 
             default:
