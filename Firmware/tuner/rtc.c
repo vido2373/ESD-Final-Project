@@ -168,3 +168,39 @@ void display_time_string(char *strhr, char *strmin, char *strsec)
 
 }
 
+void get_timestamp(uint8_t *str)
+{
+    str[0] = ((RTC_C->DATE & 0xF000)>>12) + '0';    //Month MSD
+    str[1] = ((RTC_C->DATE & 0x0F00)>>8) + '0';    //Month LSD
+
+    str[2] = '-';    //dash in between
+
+    str[3] = ((RTC_C->DATE & 0x00F0)>>4) + '0';    //Date MSD
+    str[4] = ((RTC_C->DATE & 0x000F)) + '0';    //Date LSD
+
+    str[5] = '-';    //dash in between
+
+    str[6] = ((RTC_C->YEAR & 0xF000)>>12) + '0';    //Year MSD
+    str[7] = ((RTC_C->YEAR & 0x0F00)>>8) + '0';    //Century LSD
+    str[8] = ((RTC_C->YEAR & 0x00F0)>>4) + '0';    //Decade
+    str[9] = ((RTC_C->YEAR & 0x000F)) + '0';    //Year LSD
+
+    str[10] = ' ';    //space in between
+
+    str[11] = ((RTC_C->TIM1 & 0x00F0)>>4) + '0';    //Hour MSD
+    str[12] = ((RTC_C->TIM1 & 0x000F)) + '0';    //Hour LSD
+
+    str[13] = ':';    //dash in between
+
+    str[14] = ((RTC_C->TIM0 & 0xF000)>>12) + '0';    //Min MSD
+    str[15] = ((RTC_C->TIM0 & 0x0F00)>>8) + '0';    //Min LSD
+
+    str[16] = ':';    //dash in between
+
+    str[17] = ((RTC_C->TIM0 & 0x00F0)>>4) + '0';    //Sec MSD
+    str[18] = ((RTC_C->TIM0 & 0x000F)) + '0';    //Sec LSD
+
+    str[19] = ' ';    //space in between
+
+    str[20] = '\0';   //end of string
+}

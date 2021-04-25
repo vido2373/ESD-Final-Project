@@ -80,6 +80,7 @@ uint8_t output_mode = 0;
 
 
 uint8_t notes_log[8][3];
+uint8_t notes_time_log[8][21];
 uint8_t notes_log_index = 0;
 
 typedef enum {
@@ -100,6 +101,7 @@ typedef enum {
 
 void display_parameters(int32_t freq, out_note_t note, uint32_t octv, float err);
 void start_LCD(void);
+void uart_command_processing();
 
 int main(void)
 {
@@ -156,6 +158,7 @@ int main(void)
         }
     }
     tx_enqueue("Press 'l' to print log: \r\n", 26);
+    tx_enqueue("Press 'i' to print info: \r\n", 27);
     while (tx_length()) {
         if (get_uart_transmit_ready()) {
             uint8_t tx_byte;
@@ -208,23 +211,23 @@ int main(void)
                 LCD_StringWrite(30, 112, ~(ILI9341_DARKGREY), 2, "ERR:");
             }
         }
+        uart_command_processing();
+    }
+}
 
-        //Logging
-        if (get_uart_received()) {
-            clear_uart_received();
-            uint8_t get_log = get_uart_byte();
-            if (get_log == 'l') {
-                int j = (notes_log_index + 1) & 0x7;
-                tx_enqueue("Last 8 notes played (least to most recent): \r\n", 46);
-                while (1) {
-                    tx_enqueue(notes_log[j], strlen((char *)notes_log[j]));
-                    tx_enqueue("\r\n", 2);
-                    j = (j + 1) & 0x07;
-                    if (j == notes_log_index + 1) {
-                        break;
-                    }
-                }
-
+void uart_command_processing()
+{
+    //Logging
+    if (get_uart_received()) {
+        clear_uart_received();
+        uint8_t get_log = get_uart_byte();
+        if (get_log == 'l') {
+            int j = (notes_log_index) & 0x7;
+            tx_enqueue("Last 8 notes played (least to most recent): \r\n", 46);
+            while (1) {
+                tx_enqueue(notes_time_log[j], strlen((char *)notes_time_log[j]));
+                tx_enqueue(notes_log[j], strlen((char *)notes_log[j]));
+                tx_enqueue("\r\n", 2);
                 while (tx_length()) {
                     if (get_uart_transmit_ready()) {
                         uint8_t tx_byte;
@@ -232,13 +235,48 @@ int main(void)
                         uart_transmit(tx_byte);
                     }
                 }
-                tx_enqueue("Press 'l' to print log: \r\n", 26);
-                while (tx_length()) {
-                    if (get_uart_transmit_ready()) {
-                        uint8_t tx_byte;
-                        tx_dequeue(&tx_byte, 1);
-                        uart_transmit(tx_byte);
-                    }
+                j = (j + 1) & 0x07;
+                if (j == notes_log_index) {
+                    break;
+                }
+            }
+
+            tx_enqueue("Press 'l' to print log: \r\n", 26);
+            tx_enqueue("Press 'i' to print info: \r\n", 27);
+            while (tx_length()) {
+                if (get_uart_transmit_ready()) {
+                    uint8_t tx_byte;
+                    tx_dequeue(&tx_byte, 1);
+                    uart_transmit(tx_byte);
+                }
+            }
+        }
+        if (get_log == 'i') {
+            tx_enqueue("Device: Embedded Tuner\r\n", 24);
+            tx_enqueue("Function: Detects and displays musical notes\r\n", 46);
+            while (tx_length()) {
+                if (get_uart_transmit_ready()) {
+                    uint8_t tx_byte;
+                    tx_dequeue(&tx_byte, 1);
+                    uart_transmit(tx_byte);
+                }
+            }
+            tx_enqueue("Modes: Pitch(gives note) and Tune(gives error in note)\r\n", 56);
+            tx_enqueue("Press Button to toggle mode\r\n", 29);
+            while (tx_length()) {
+                if (get_uart_transmit_ready()) {
+                    uint8_t tx_byte;
+                    tx_dequeue(&tx_byte, 1);
+                    uart_transmit(tx_byte);
+                }
+            }
+            tx_enqueue("Press 'l' to print log: \r\n", 26);
+            tx_enqueue("Press 'i' to print info: \r\n", 27);
+            while (tx_length()) {
+                if (get_uart_transmit_ready()) {
+                    uint8_t tx_byte;
+                    tx_dequeue(&tx_byte, 1);
+                    uart_transmit(tx_byte);
                 }
             }
         }
@@ -325,6 +363,7 @@ void display_parameters(int32_t freq, out_note_t note, uint32_t octv, float err)
             case C_SHARP:
             case C1:
                 LCD_StringWrite(TONE_X_POS, TONE_Y_POS, ~(ILI9341_GREEN), 8, "C");
+                get_timestamp(&notes_time_log[notes_log_index][0]);
                 notes_log[notes_log_index++][0] = 'C';
                 notes_log_index &= 0x7;
                 break;
@@ -332,12 +371,14 @@ void display_parameters(int32_t freq, out_note_t note, uint32_t octv, float err)
             case D_SHARP:
             case D1:
                 LCD_StringWrite(TONE_X_POS, TONE_Y_POS, ~(ILI9341_GREEN), 8, "D");
+                get_timestamp(&notes_time_log[notes_log_index][0]);
                 notes_log[notes_log_index++][0] = 'D';
                 notes_log_index &= 0x7;
                 break;
 
             case E1:
                 LCD_StringWrite(TONE_X_POS, TONE_Y_POS, ~(ILI9341_GREEN), 8, "E");
+                get_timestamp(&notes_time_log[notes_log_index][0]);
                 notes_log[notes_log_index++][0] = 'E';
                 notes_log_index &= 0x7;
                 break;
@@ -345,6 +386,7 @@ void display_parameters(int32_t freq, out_note_t note, uint32_t octv, float err)
             case F_SHARP:
             case F1:
                 LCD_StringWrite(TONE_X_POS, TONE_Y_POS, ~(ILI9341_GREEN), 8, "F");
+                get_timestamp(&notes_time_log[notes_log_index][0]);
                 notes_log[notes_log_index++][0] = 'F';
                 notes_log_index &= 0x7;
                 break;
@@ -352,6 +394,7 @@ void display_parameters(int32_t freq, out_note_t note, uint32_t octv, float err)
             case G_SHARP:
             case G1:
                 LCD_StringWrite(TONE_X_POS, TONE_Y_POS, ~(ILI9341_GREEN), 8, "G");
+                get_timestamp(&notes_time_log[notes_log_index][0]);
                 notes_log[notes_log_index++][0] = 'G';
                 notes_log_index &= 0x7;
                 break;
@@ -359,12 +402,14 @@ void display_parameters(int32_t freq, out_note_t note, uint32_t octv, float err)
             case A_SHARP:
             case A1:
                 LCD_StringWrite(TONE_X_POS, TONE_Y_POS, ~(ILI9341_GREEN), 8, "A");
+                get_timestamp(&notes_time_log[notes_log_index][0]);
                 notes_log[notes_log_index++][0] = 'A';
                 notes_log_index &= 0x7;
                 break;
 
             case B1:
                 LCD_StringWrite(TONE_X_POS, TONE_Y_POS, ~(ILI9341_GREEN), 8, "B");
+                get_timestamp(&notes_time_log[notes_log_index][0]);
                 notes_log[notes_log_index++][0] = 'B';
                 notes_log_index &= 0x7;
                 break;

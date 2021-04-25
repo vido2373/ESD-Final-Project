@@ -14,4 +14,6 @@ void display_date_string(char *str);
 
 void display_time_string(char *strhr, char *strmin, char *strsec);
 
+void get_timestamp(uint8_t *str);
+
 #endif  //_RTC_H_
