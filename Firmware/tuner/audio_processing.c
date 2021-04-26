@@ -81,7 +81,8 @@ void init_audio_peripherals(void) {
 
     ADC14->CTL1 |= ADC14_CTL1_DF; //set output to be signed binary
 
-    /* Configuring DMA module */
+    /* Configuring DMA module
+     * Code taken from boostxl_edumkii_microphonefft_msp432p401r_MSP_EXP432P401R_nortos_ccs project in SDK */
     DMA_enableModule();
     DMA_setControlBase(MSP_EXP432P401RLP_DMAControlTable);
 
@@ -135,6 +136,7 @@ void init_hanning_window(void) {
 
 
 void get_frequency_from_samples(int32_t* frequency) {
+    /* Code taken from boostxl_edumkii_microphonefft_msp432p401r_MSP_EXP432P401R_nortos_ccs project in SDK */
     MAP_PCM_gotoLPM0();
 
     int i = 0;
@@ -183,7 +185,8 @@ void get_frequency_from_samples(int32_t* frequency) {
 }
 
 
-/* Completion interrupt for ADC14 MEM0 */
+/* Completion interrupt for ADC14 MEM0
+ * Code taken from boostxl_edumkii_microphonefft_msp432p401r_MSP_EXP432P401R_nortos_ccs project in SDK */
 void DMA_INT1_IRQHandler(void)
 {
     /* Switch between primary and alternate bufferes with DMA's PingPong mode */
