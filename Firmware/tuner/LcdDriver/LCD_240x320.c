@@ -1,14 +1,20 @@
-
-//*****************************************************************************
-//
-//
-//*****************************************************************************
-
+/*******************************************************************************
+ * Project  :   Embedded Tuner
+ * File     :   LCD_240x320.c
+ * Date     :   04/12/2021
+ * Brief    :   display SPI communication API functions used for updating LCD
+ * Reference:   Code taken from boostxl_edumkii_microphonefft_msp432p401r_MSP_EXP432P401R_nortos_ccs project in SDK
+ *******************************************************************************/
+/* Includes */
 #include "LCD_240x320.h"
 #include <ti/grlib/grlib.h>
 #include <ti/devices/msp432p4xx/driverlib/driverlib.h>
 #include <stdint.h>
 
+/*
+ * Function     :   void LCD_PortInit(void)
+ * Brief        :   initializes GPIOs used for SPI based LCD
+ */
 void LCD_PortInit(void)
 {
     // LCD_SCK
@@ -23,6 +29,10 @@ void LCD_PortInit(void)
     GPIO_setAsOutputPin(LCD_CS_PORT, LCD_CS_PIN);
 }
 
+/*
+ * Function     :   void LCD_SpiInit(void)
+ * Brief        :   initializes SPI register and driver
+ */
 void LCD_SpiInit(void)
 {
     eUSCI_SPI_MasterConfig config =

@@ -1,8 +1,10 @@
-
-//*****************************************************************************
-//
-//
-//*****************************************************************************
+/*******************************************************************************
+ * Project  :   Embedded Tuner
+ * File     :   LCD_240x320.h
+ * Date     :   04/12/2021
+ * Brief    :   display SPI communication API functions used for updating LCD
+ * Reference:   Code taken from boostxl_edumkii_microphonefft_msp432p401r_MSP_EXP432P401R_nortos_ccs project in SDK
+ *******************************************************************************/
 
 #ifndef __HAL_MSP_EXP432P401R_CRYSTALFONTZLCD_H_
 #define __HAL_MSP_EXP432P401R_CRYSTALFONTZLCD_H_

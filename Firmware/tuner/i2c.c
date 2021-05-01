@@ -67,20 +67,40 @@
 //   June 2016 (updated) | June 2014 (created)
 //   Built with CCSv6.1, IAR, Keil, GCC
 //******************************************************************************
+/*******************************************************************************
+ * Project  :   Embedded Tuner
+ * File     :   i2c.c
+ * Author   :   Mukta
+ * Date     :   04/12/2021
+ * Modifications    :   modified Interrupt handler as per requirement,
+ *                      made it bidirectional communication
+ *                      Also added few error handling interrupts
+ *******************************************************************************/
 #include <ti/devices/msp432p4xx/inc/msp.h>
 #include <stdint.h>
 #include "i2c.h"
 
-uint8_t RXData[8] = {0};
+//For time and date total 7 register and 1 of register pointer
+#define MAX_REG     8
+
+// Pointer to RX data, and RX data buffer
+uint8_t RXData[MAX_REG] = {0};
 uint8_t RXDataPointer;
 
-// Pointer to TX data
-uint8_t TXData[8]= {0};
-uint8_t TXByteCtr=255, state=0, ChangeMode=0;
+// TX data buffer and counter
+uint8_t TXData[MAX_REG]= {0};
+uint8_t TXByteCtr=255;
+uint8_t state=0;            //1=read time in process, 0=ready for next read time call
 
+//used to change from write to read commands in case of writing start location and then reading from that
+uint8_t ChangeMode=0;       //1=MSP in RX mode, 0=MSP in TX mode
+
+/*
+ * Function     :   void init_i2c(void)
+ * Brief        :   initializes I2C for RTC IC and sets SCL of 100KHz
+ */
 void init_i2c(void)
 {
-
     // Configure GPIO
     P6->SEL0 |= BIT4 | BIT5;                // I2C pins
 
@@ -112,8 +132,10 @@ void init_i2c(void)
     ChangeMode=1;
 }
 
-
-// I2C interrupt service routine
+/*
+ * Function     :   void EUSCIB1_IRQHandler(void)
+ * Brief        :   I2C interrupt service routine
+ */
 void EUSCIB1_IRQHandler(void)
 {
     if (EUSCI_B1->IFG & EUSCI_B_IFG_NACKIFG)
@@ -132,21 +154,18 @@ void EUSCIB1_IRQHandler(void)
 
         if (RXDataPointer > sizeof(RXData))
         {
+            //start from 0th location of buffer on overflow
             RXDataPointer = 0;
+            //change state to read time
             state=0;
         }
-
-        // Wake up on exit from ISR
-        //SCB->SCR &= ~SCB_SCR_SLEEPONEXIT_Msk;
-
-        // Ensures SLEEPONEXIT takes effect immediately
-        //__DSB();
     }
     if (EUSCI_B1->IFG & EUSCI_B_IFG_BCNTIFG)
     {
         EUSCI_B1->IFG &= ~ EUSCI_B_IFG_BCNTIFG;
-
+        //start from 0th location of buffer on byte count overflow
         RXDataPointer = 0;
+        //change state to read time
         state=0;
     }
     if (EUSCI_B1->IFG & EUSCI_B_IFG_TXIFG0)
@@ -189,19 +208,24 @@ void EUSCIB1_IRQHandler(void)
     }
 }
 
+/*
+ * Function     :   void set_time()
+ * Brief        :   can be used to set time in DS1337 as per requirement
+ *                  used only once while setting initial real time in DS1337
+ *                  then removed from main loop
+ */
 void set_time()
 {
-
-    TXByteCtr = 8;
-    TXData[0]=0;
-    TXData[1]=0x50;
-    TXData[2]=0x11;
-    TXData[3]=0x15;
-    TXData[4]=0x05;
-    TXData[5]=0x23;
-    TXData[6]=0x04;
-    TXData[7]=0x21;
-
+    //time settings
+    TXByteCtr = MAX_REG;
+    TXData[0]=0;        //Write pointer
+    TXData[1]=0x50;     //seconds = 50
+    TXData[2]=0x11;     //min = 11
+    TXData[3]=0x15;     //hours = 3pm
+    TXData[4]=0x05;     //day = friday
+    TXData[5]=0x23;     //date = 23rd
+    TXData[6]=0x04;     //month = april
+    TXData[7]=0x21;     //year = 2021
 
     // I2C TX condition
     EUSCI_B1->CTLW0 |= EUSCI_B_CTLW0_TR;
@@ -210,14 +234,20 @@ void set_time()
 
     // I2C start condition
     EUSCI_B1->CTLW0 |= EUSCI_B_CTLW0_TXSTT;
-
 }
 
-
+/*
+ * Function     :   void read_time()
+ * Brief        :   First sends device address and location pointer
+ *                  then starts reading
+ */
 void read_time()
 {
+    //skip if reading is in process
     if(state)
         return;
+
+    //transmit 1 byte of location pointer = 0x00
     TXByteCtr = 1;
     TXData[0]=0;
     TXData[1]=0;
@@ -228,7 +258,6 @@ void read_time()
     TXData[6]=0;
     TXData[7]=0;
 
-
     // I2C start condition
     EUSCI_B1->CTLW0 |= EUSCI_B_CTLW0_TR;
 
@@ -237,9 +266,14 @@ void read_time()
     // I2C start condition
     EUSCI_B1->CTLW0 |= EUSCI_B_CTLW0_TXSTT;
 
+    //Start read operation
     state=1;
 }
 
+/*
+ * Function     :   void set_int_rtc()
+ * Brief        :   setting up internal RTC
+ */
 void set_int_rtc()
 {
     while(state);

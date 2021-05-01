@@ -1,8 +1,11 @@
-
-//*****************************************************************************
-//
-//
-//*****************************************************************************
+/*******************************************************************************
+ * Project  :   Embedded Tuner
+ * File     :   LCD_driver.c
+ * Author   :   Mukta
+ * Date     :   04/12/2021
+ * Brief    :   graphic display functions
+ * Reference:   https://github.com/adafruit/TFTLCD-Library
+ *******************************************************************************/
 
 #include <ti/grlib/grlib.h>
 #include "LCD_driver.h"
@@ -24,8 +27,6 @@ char my_font[TOTAL_CHAR][8] = MY_FONT;
 
 uint8_t Lcd_Orientation;
 uint16_t Lcd_ScreenWidth, Lcd_ScreenHeigth;
-uint8_t Lcd_PenSolid, Lcd_FontSolid, Lcd_FlagRead;
-uint16_t Lcd_TouchTrim;
 
 //*****************************************************************************
 //
@@ -192,11 +193,6 @@ void LCD_Init(void)
 
     LCD_SetOrientation(LCD_ORIENTATION_UP);
 
-    Lcd_PenSolid  = 0;
-    Lcd_FontSolid = 1;
-    Lcd_FlagRead  = 0;
-    Lcd_TouchTrim = 0;
-
     LCD_SetDrawFrame(0, 0, 239, 319);
 
     LCD_writeCommand(ILI9341_RAMWR);
@@ -272,6 +268,13 @@ void LCD_Init(void)
 }
 
 
+//*****************************************************************************
+//
+//! draws the border on the page
+//!
+//! \return None.
+//
+//*****************************************************************************
 void LCD_SetDrawFrame(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1)
 {
     LCD_writeCommand(ILI9341_CASET);
@@ -391,16 +394,14 @@ void LCD_LineDraw(int16_t startp, int16_t endp, int16_t constp, uint16_t ulValue
 }
 //*****************************************************************************
 //
-//! Draws a line on the screen.
+//! Writes a character or string on the screen.
 //!
-//! \param startp is the X/y coordinate of the start point of line.
-//! \param endp is the X/Y coordinate of the end point of line.
-//! \param constp is the X/Y coordinate of the line which remains constant.
+//! \param lx is the X coordinate of the start point of Character, top left.
+//! \param ly is the Y coordinate of the start point of Character, top left.
+//! \param fontsize is size of character to be displayed
+//!                     1- 5x8 pixels, 2- 10x16pixels ... so on
 //! \param ulValue is the color of the pixel.
-//! \param dir is the direction of line - 1:Vertical, 0:Horizontal.
-//!
-//! This function sets the given pixels in a line to a particular color.
-//! The coordinates of the pixel are assumed to be within the extents of the display.
+//! \param str is the string of character to be written.
 //!
 //! \return None.
 //
@@ -446,11 +447,10 @@ void LCD_StringWrite(int16_t lx, int16_t ly, uint16_t ulValue, uint8_t fontsize,
 }
 //*****************************************************************************
 //
-//! Set background color of the screen.
+//! Draws trace of given frequency in fixed bottom place of screen.
 //!
 //! \param ulValue is the color of the pixel.
-//!
-//! This function sets the background color of the whole screen.
+//! \param freq is the frequency of which waveform needs to be generated.
 //!
 //! \return None.
 //
@@ -460,6 +460,7 @@ void LCD_DrawTrace(uint16_t ulValue, int32_t freq)
     //Graph 1=10,10 2=10,70 3=309,70 4=309,10
     static int16_t val=0, place=10;
 
+    //As accurate frequency range is between 128Hz to 2KHz
     int16_t period = (int16_t)(28000/freq);
     int16_t halfperiod = period>>1;
 
@@ -484,11 +485,9 @@ void LCD_DrawTrace(uint16_t ulValue, int32_t freq)
 }
 //*****************************************************************************
 //
-//! Set background color of the screen.
+//! Draws bar graph indicating octave strength
 //!
-//! \param ulValue is the color of the pixel.
-//!
-//! This function sets the background color of the whole screen.
+//! \param freq is the frequency depending on which bar graph is generated.
 //!
 //! \return None.
 //
@@ -537,11 +536,9 @@ void LCD_SetBackground(uint16_t ulValue)
 }
 //*****************************************************************************
 //
-//! Set background color of the screen.
+//! Updates rectangle area of screen with given color.
 //!
 //! \param ulValue is the color of the pixel.
-//!
-//! This function sets the background color of the whole screen.
 //!
 //! \return None.
 //

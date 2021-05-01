@@ -1,51 +1,11 @@
-/* --COPYRIGHT--,BSD
- * Copyright (c) 2017, Texas Instruments Incorporated
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * *  Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *
- * *  Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * *  Neither the name of Texas Instruments Incorporated nor the names of
- *    its contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
- * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
- * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
- * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
- * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
- * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * --/COPYRIGHT--*/
-/******************************************************************************
- * MSP432 Empty Project
- *
- * Description: An empty project that uses DriverLib
- *
- *                MSP432P401
- *             ------------------
- *         /|\|                  |
- *          | |                  |
- *          --|RST               |
- *            |                  |
- *            |                  |
- *            |                  |
- *            |                  |
- *            |                  |
- * Author:
-*******************************************************************************/
+/*******************************************************************************
+ * Project  :   Embedded Tuner
+ * File     :   main.c
+ * Author   :   Mukta & Vishnu
+ * Date     :   04/12/2021
+ * Brief    :   main function and display functions used inside main
+ *******************************************************************************/
+
 /* DriverLib Includes */
 #include <ti/devices/msp432p4xx/inc/msp.h>
 #include <ti/devices/msp432p4xx/driverlib/driverlib.h>
@@ -69,19 +29,32 @@
 #include "tx_queue.h"
 #include "uart_driver.h"
 
+/* Macro definitions */
+#define TONE_X_POS      178
+#define TONE_Y_POS      144
+#define SHARP_X_POS     (TONE_X_POS+50)
+#define SHARP_Y_POS     TONE_Y_POS
+#define OCTV_X_POS      SHARP_X_POS
+#define OCTV_Y_POS      (TONE_Y_POS-32)
+#define FREQ_X_POS      90
+#define FREQ_Y_POS      144
+#define ERR_X_POS       90
+#define ERR_Y_POS       112
+#define MODE_X_POS       172
+#define MODE_Y_POS       176
+
 /*Global Variables*/
 char date_ascii[]="04-21-2021";
 char hr_ascii[]="05:";
 char min_ascii[]="05:";
 char sec_ascii[]="05";
 
-uint8_t output_mode = 0;
-
-
+//Logging variables
 uint8_t notes_log[8][3];
 uint8_t notes_time_log[8][21];
 uint8_t notes_log_index = 0;
 
+//For displaying notes
 typedef enum {
     C1      = 32,
     C_SHARP = 34,
@@ -98,38 +71,92 @@ typedef enum {
     NO_NOTE = 0
 } out_note_t;
 
+/* Function Prototypes */
 void display_parameters(int32_t freq, out_note_t note, uint32_t octv, float err);
 void start_LCD(void);
 void uart_command_processing();
+void init_peripherals(void);
 
+/*
+ * Function     :   int main(void)
+ * Brief        :   main function loop
+ *                  get tone (ADC) -> display updated parameters -> check UART command -> repeat
+ */
 int main(void)
 {
     /* Halting WDT and disabling master interrupts */
     MAP_WDT_A_holdTimer();
     MAP_Interrupt_disableMaster();
 
+    /* Initialize all peripherals */
+    init_peripherals();
+
+    int32_t frequency;
+    uint32_t octave;
+    float error;
+    note_t out_note;
+
+    while(1)
+    {
+        get_frequency_from_samples(&frequency); //does fft to get frequency
+
+        get_tuning_data(frequency, &out_note, &octave, &error); //gets note, tune of note, and octave from frequency
+
+        //As frequency is accurate up till 128Hz so make note and octave zero below that
+        if (frequency < 128) {
+            out_note = 0;
+            octave = 0;
+        }
+
+        //Update display with changed parameters only
+        display_date_string(date_ascii);
+        display_time_string(hr_ascii, min_ascii, sec_ascii);
+        display_parameters(frequency, (out_note_t)out_note, octave, error);
+
+        //Update bar graph and trace as per octave and frequency
+        if (out_note > 0) {
+            /* Draw frequency bin graph */
+            for (int i=0; i<300; i++) {
+                LCD_DrawTrace(ILI9341_INV_RED, frequency);
+            }
+            LCD_DrawGraph(frequency);
+        }
+
+        //Check for UART commands and reply on terminal respectively
+        uart_command_processing();
+    }
+}
+
+/*
+ * Function     :   void init_peripherals(void)
+ * Brief        :   initialization of all peripherals used
+ */
+void init_peripherals(void)
+{
     /* Set the core voltage level to VCORE1 */
-    MAP_PCM_setCoreVoltageLevel(PCM_VCORE1);
+        MAP_PCM_setCoreVoltageLevel(PCM_VCORE1);
 
     /* Set 2 flash wait states for Flash bank 0 and 1*/
     MAP_FlashCtl_setWaitState(FLASH_BANK0, 2);
     MAP_FlashCtl_setWaitState(FLASH_BANK1, 2);
 
+    /* start clock at 48MHz */
     CLK_Init();
 
-
+    /* Internal RTC initialization */
     init_rtc();
 
+    /* I2C driver for External RTC initialization */
     init_i2c();
 
     // Enable global interrupt
     __enable_irq();
 
+    // Time and Date settings
     __delay_cycles(100);
-    read_time();
+    read_time();            //read from external RTC IC
     __delay_cycles(10000);
-    set_int_rtc();
-    //get_rtc();
+    set_int_rtc();          //set internal RTC time and date as per external RTC
 
     /* Initializes display */
     LCD_Init();
@@ -137,18 +164,10 @@ int main(void)
 
     //push-button init
     init_switch();
+    // initialize UART
     uart_init();
 
-    NVIC->ISER[1] |= 1 << ((PORT4_IRQn) & 31);
-    init_hanning_window();
-    init_audio_peripherals();
-
-    int32_t frequency;
-    uint32_t octave;
-    float error;
-    note_t out_note;
-    uint8_t prevmode = 0;
-
+    //Print start message on terminal
     while (tx_length()) {
         if (get_uart_transmit_ready()) {
             uint8_t tx_byte;
@@ -166,54 +185,16 @@ int main(void)
         }
     }
 
-    while(1)
-    {
-        get_frequency_from_samples(&frequency); //does fft to get frequency
-
-        get_tuning_data(frequency, &out_note, &octave, &error); //gets note, tune of note, and octave from frequency
-
-        if (frequency < 128) {
-            out_note = 0;
-            octave = 0;
-        }
-
-        display_parameters(frequency, (out_note_t)out_note, octave, error);
-
-        if (out_note > 0) {
-            /* Draw frequency bin graph */
-            for (int i=0; i<300; i++) {
-                LCD_DrawTrace(0x07FF, frequency);
-            }
-            LCD_DrawGraph(frequency);
-        }
-
-        display_date_string(date_ascii);
-        display_time_string(hr_ascii, min_ascii, sec_ascii);
-
-        if(get_output_mode())
-        {
-            if (prevmode != get_output_mode())
-            {
-                prevmode = get_output_mode();
-
-                LCD_StringWrite(172, 176, ~(ILI9341_OLIVE), 2, "PITCH");
-                LCD_StringWrite(30, 112, ~(ILI9341_DARKGREY), 2, "          ");
-            }
-        }
-        else
-        {
-            if (prevmode != get_output_mode())
-            {
-                prevmode = get_output_mode();
-
-                LCD_StringWrite(172, 176, ~(ILI9341_OLIVE), 2, "TUNER");
-                LCD_StringWrite(30, 112, ~(ILI9341_DARKGREY), 2, "ERR:");
-            }
-        }
-        uart_command_processing();
-    }
+    //Audio scanning initialization
+    NVIC->ISER[1] |= 1 << ((PORT4_IRQn) & 31);
+    init_hanning_window();
+    init_audio_peripherals();
 }
 
+/*
+ * Function     :   void uart_command_processing()
+ * Brief        :   UART command processing function
+ */
 void uart_command_processing()
 {
     //Logging
@@ -282,6 +263,20 @@ void uart_command_processing()
     }
 }
 
+/*
+ * Function     :   void start_LCD(void)
+ * Brief        :   initialization of LCD to Embedded tuner display page
+ * Page Look    :    --------------------------------------
+ *                   |   Date:               Time:        |
+ *                   |       Embedded Tuner               |
+ *                   |       Mode: Tuner             bar  |
+ *                   |   Freq:        Tone Sharp     gr-  |
+ *                   |   Err :        Tone Octv      aph  |
+ *                   |                                    |
+ *                   |   Frequency square waveform        |
+ *                   |                                    |
+ *                   --------------------------------------
+ */
 void start_LCD(void)
 {
     LCD_SetBackground(0x00);
@@ -299,27 +294,25 @@ void start_LCD(void)
     LCD_StringWrite(76, 208, ~(ILI9341_BLUE), 2, "EMBEDDED TUNER");
     LCD_StringWrite(100, 176, ~(ILI9341_OLIVE), 2, "MODE: TUNER");
 
-    LCD_StringWrite(30, 144, ~(ILI9341_ORANGE), 2, "FREQ:");
+    LCD_StringWrite(30, 144, (ILI9341_INV_ORANGE), 2, "FREQ:");
     LCD_StringWrite(30, 112, ~(ILI9341_DARKGREY), 2, "ERR:");
 }
 
-#define TONE_X_POS      178
-#define TONE_Y_POS      144
-#define SHARP_X_POS     (TONE_X_POS+50)
-#define SHARP_Y_POS     TONE_Y_POS
-#define OCTV_X_POS      SHARP_X_POS
-#define OCTV_Y_POS      (TONE_Y_POS-32)
-#define FREQ_X_POS      90
-#define FREQ_Y_POS      144
-#define ERR_X_POS       90
-#define ERR_Y_POS       112
-
+/*
+ * Function     :   void display_parameters(int32_t freq, out_note_t note, uint32_t octv, float err)
+ * Brief        :   updates frequency, Tone, octave, Error on display if changed
+ * Inputs       :   freq - current tone frequency
+ *                  note - Tone detected
+ *                  octv - octave of current detected tone
+ *                  err - +/- difference in detected frequency from expected Tone frequency
+ */
 void display_parameters(int32_t freq, out_note_t note, uint32_t octv, float err)
 {
     static int32_t prevfreq=0;
     static out_note_t prevnote=NO_NOTE;
     static uint32_t prevoctv=0;
     static float preverr=0;
+    static uint8_t prevmode = 0;
 
 
     if (prevoctv != octv)
@@ -455,8 +448,8 @@ void display_parameters(int32_t freq, out_note_t note, uint32_t octv, float err)
         freqstr[i++] = 'H';
         freqstr[i] = '\0';
 
-        LCD_StringWrite(FREQ_X_POS+pos, FREQ_Y_POS, ~(ILI9341_ORANGE), 2, freqstr);
-        LCD_StringWrite(FREQ_X_POS+60, FREQ_Y_POS-8, ~(ILI9341_ORANGE), 1, "Z");
+        LCD_StringWrite(FREQ_X_POS+pos, FREQ_Y_POS, (ILI9341_INV_ORANGE), 2, freqstr);
+        LCD_StringWrite(FREQ_X_POS+60, FREQ_Y_POS-8, (ILI9341_INV_ORANGE), 1, "Z");
 
         prevfreq = freq;
 
@@ -475,13 +468,34 @@ void display_parameters(int32_t freq, out_note_t note, uint32_t octv, float err)
             }
             else if (preverr < (-0.05))
             {
-                LCD_StringWrite(ERR_X_POS, ERR_Y_POS, 0x07FF, 2, "FLAT");
+                LCD_StringWrite(ERR_X_POS, ERR_Y_POS, ILI9341_INV_RED, 2, "FLAT");
                 LCD_Rectangle(ERR_X_POS+48, ERR_Y_POS-16, ERR_X_POS+60, ERR_Y_POS, 0);
             }
             else
             {
                 LCD_StringWrite(ERR_X_POS, ERR_Y_POS, ~(ILI9341_GREEN), 2, "TUNED");
             }
+        }
+    }
+
+    if(get_output_mode())
+    {
+        if (prevmode != get_output_mode())
+        {
+            prevmode = get_output_mode();
+
+            LCD_StringWrite(MODE_X_POS, MODE_Y_POS, ~(ILI9341_OLIVE), 2, "PITCH");
+            LCD_StringWrite(ERR_X_POS - 60, ERR_Y_POS, ~(ILI9341_DARKGREY), 2, "          ");
+        }
+    }
+    else
+    {
+        if (prevmode != get_output_mode())
+        {
+            prevmode = get_output_mode();
+
+            LCD_StringWrite(MODE_X_POS, MODE_Y_POS, ~(ILI9341_OLIVE), 2, "TUNER");
+            LCD_StringWrite(ERR_X_POS - 60, ERR_Y_POS, ~(ILI9341_DARKGREY), 2, "ERR:");
         }
     }
 }

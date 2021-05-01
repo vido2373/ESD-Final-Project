@@ -35,9 +35,18 @@
 //                         128x128 display with ST7735 controller.
 //
 //*****************************************************************************
+/*******************************************************************************
+ * Project  :   Embedded Tuner
+ * File     :   LCD_driver.c
+ * Author   :   Mukta
+ * Date     :   04/12/2021
+ * Brief    :   graphic display functions
+ * Reference:   https://github.com/adafruit/TFTLCD-Library
+ *              Crystalfontz128x128.h - boostxl_edumkii_microphonefft_msp432p401r_MSP_EXP432P401R_nortos_ccs
+ *******************************************************************************/
 
-#ifndef __CRYSTALFONTZLCD_H__
-#define __CRYSTALFONTZLCD_H__
+#ifndef __LCD_DRIVER_H__
+#define __LCD_DRIVER_H__
 
 
 #include <stdint.h>
@@ -136,10 +145,12 @@
 #define ILI9341_GREENYELLOW 0xBF80 ///< 173, 255,  41
 #define ILI9341_PINK 0xFC18        ///< 255, 130, 198
 
+#define ILI9341_INV_ORANGE 0x02DF      ///< 255, 165,   0
+#define ILI9341_INV_RED     0x07FF         ///< 255,   0,   0
+
+
 extern uint8_t Lcd_Orientation;
 extern uint16_t Lcd_ScreenWidth, Lcd_ScreenHeigth;
-extern uint8_t Lcd_PenSolid, Lcd_FontSolid, Lcd_FlagRead;
-extern uint16_t Lcd_TouchTrim;
 
 #define TOTAL_CHAR        43
 
@@ -197,24 +208,34 @@ extern uint16_t Lcd_TouchTrim;
                     {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, \
 };
 
+// Initializes the display driver.
 extern void LCD_Init(void);
 
+// draws the border on the page
 extern void LCD_SetDrawFrame(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1);
 
+// Sets the LCD Orientation.
 extern void LCD_SetOrientation(uint8_t orientation);
 
+// Draws a pixel on the screen.
 extern void LCD_PixelDraw(int16_t lX, int16_t lY, uint16_t ulValue);
 
+// Set background color of the screen.
 void LCD_SetBackground(uint16_t ulValue);
 
+// Draws a line on the screen.
 void LCD_LineDraw(int16_t startp, int16_t endp, int16_t constp, uint16_t ulValue, bool dir);
 
+// Writes a character or string on the screen.
 void LCD_StringWrite(int16_t lx, int16_t ly, uint16_t ulValue, uint8_t fontsize, char *str);
 
+// Draws trace of given frequency in fixed bottom place of screen.
 void LCD_DrawTrace(uint16_t ulValue, int32_t freq);
 
+// Draws bar graph indicating octave strength
 void LCD_DrawGraph(int32_t freq);
 
+// Updates rectangle area of screen with given color.
 void LCD_Rectangle(int16_t lx, int16_t ly, int16_t lx1, int16_t ly1, uint16_t ulValue);
 
-#endif /* __CRYSTALFONTZLCD_H__ */
+#endif /* __LCD_DRIVER_H__ */

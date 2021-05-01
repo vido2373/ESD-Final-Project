@@ -26,12 +26,20 @@
 //   Oct 2016 (updated) | November 2013 (created)
 //   Built with CCSv6.1, IAR, Keil, GCC
 //******************************************************************************
+/*******************************************************************************
+ * Project  :   Embedded Tuner
+ * File     :   rtc.c
+ * Author   :   Mukta
+ * Date     :   04/12/2021
+ * Reference:   msp432p401x_rtc_01/02
+ * Modifications    :   modified as per requirement, removed interrupts
+ *******************************************************************************/
 
-// File: rtc.c
-// Reference: msp432p401x_rtc_01/02
+/* Includes */
 #include <ti/devices/msp432p4xx/inc/msp.h>
 #include "LcdDriver/LCD_driver.h"
 
+/* Macro definitions */
 #define DATE_X_POS      51
 #define DATE_Y_POS      224
 #define HR_X_POS        254
@@ -41,7 +49,10 @@
 #define SEC_X_POS       (MIN_X_POS+18)
 #define SEC_Y_POS       (MIN_Y_POS)
 
-
+/*
+ * Function     :   void init_rtc()
+ * Brief        :   initializes internal RTC
+ */
 void init_rtc()
 {
 
@@ -91,7 +102,10 @@ void init_rtc()
 
 }
 
-
+/*
+ * Function     :   void display_date_string(char *str)
+ * Brief        :   to display date read from internal RTC on LCD
+ */
 void display_date_string(char *str)
 {
     static uint16_t prevdate =0;
@@ -122,6 +136,10 @@ void display_date_string(char *str)
 
 }
 
+/*
+ * Function     :   void display_time_string(char *strhr, char *strmin, char *strsec)
+ * Brief        :   to display time read from internal RTC on LCD
+ */
 void display_time_string(char *strhr, char *strmin, char *strsec)
 {
     static uint8_t prevsec = 0, prevmin = 0, prevhr = 0;
@@ -168,6 +186,10 @@ void display_time_string(char *strhr, char *strmin, char *strsec)
 
 }
 
+/*
+ * Function     :   void get_timestamp(uint8_t *str)
+ * Brief        :   to get time and date for logging purpose
+ */
 void get_timestamp(uint8_t *str)
 {
     str[0] = ((RTC_C->DATE & 0xF000)>>12) + '0';    //Month MSD
