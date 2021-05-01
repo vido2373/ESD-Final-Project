@@ -29,7 +29,7 @@
 
 // File: rtc.c
 // Reference: msp432p401x_rtc_01/02
-#include <msp.h>
+#include <ti/devices/msp432p4xx/inc/msp.h>
 #include "LcdDriver/LCD_driver.h"
 
 #define DATE_X_POS      51

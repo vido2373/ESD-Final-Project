@@ -7,7 +7,7 @@
 
 
 #include "uart_driver.h"
-#include "msp.h"
+#include <ti/devices/msp432p4xx/inc/msp.h>
 #include <stdint.h>
 
 static uint8_t uart_byte = 0;

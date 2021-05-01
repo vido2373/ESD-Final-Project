@@ -67,7 +67,7 @@
 //   June 2016 (updated) | June 2014 (created)
 //   Built with CCSv6.1, IAR, Keil, GCC
 //******************************************************************************
-#include "msp.h"
+#include <ti/devices/msp432p4xx/inc/msp.h>
 #include <stdint.h>
 #include "i2c.h"
 

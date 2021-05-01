@@ -2,7 +2,6 @@
 #define UART_DRIVER_H_
 
 #include <stdint.h>
-#include "msp.h"
 
 void uart_init(void);
 
