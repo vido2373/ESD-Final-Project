@@ -1,12 +1,19 @@
+/*******************************************************************************
+ * Project  :   Embedded Tuner
+ * File     :   switch.c
+ * Author   :   Vishnu Dodballapur
+ * Date     :   04/2/2021
+ *******************************************************************************/
 #include "switch.h"
 #include <ti/devices/msp432p4xx/inc/msp.h>
 
 #include <stdint.h>
 
-static uint8_t output_mode;
+volatile static uint8_t output_mode;
 
-/**
- * void init_switch(void)
+/*
+ * Function     :   void init_switch(void)
+ * Brief        :   Initializes push button for falling-edge interrupt detection
  */
 void init_switch(void)
 {
@@ -25,12 +32,20 @@ void init_switch(void)
 
 }
 
-
+/*
+ * Function     :   uint8_t get_output_mode(void)
+ * Brief        :   Returns the output mode of the tuner
+ * Return       :   1 if pitch mode, 0 if tuner mode
+ */
 uint8_t get_output_mode(void) {
     return output_mode;
 }
 
 
+/*
+ * Function     :   void PORT4_IRQHandler(void)
+ * Brief        :   GPIO IRQ Handler
+ */
 void PORT4_IRQHandler(void)
 {
     if(P4->IFG & BIT1) {

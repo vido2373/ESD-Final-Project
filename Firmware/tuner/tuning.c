@@ -1,14 +1,15 @@
-/*
- * tuning.c
- *
- *  Created on: Apr 16, 2021
- *      Author: vishn
- */
+/*******************************************************************************
+ * Project  :   Embedded Tuner
+ * File     :   tuning.c
+ * Author   :   Vishnu Dodballapur
+ * Date     :   04/16/2021
+ *******************************************************************************/
 
 #include "tuning.h"
 #include <stdint.h>
 #include <float.h>
 
+//frequencies of notes from C1 to B1
 #define NUM_NOTES (12)
 
 #define C1 (32.70)
@@ -24,12 +25,20 @@
 #define A_SHARP (58.27)
 #define B1 (61.74)
 
+//array to hold frequencies of notes from C1 to B1
 static note_t notes[NUM_NOTES] = {
     C1, C_SHARP, D1, D_SHARP, E1, F1,
     F_SHARP, G1, G_SHARP, A1, A_SHARP, B1,
 };
 
-
+/*
+ * Function     :   void get_tuning_data(int32_t frequency, note_t* out_note, uint32_t* octave, float* error)
+ * Brief        :   Gets tuning data based on the frequency
+ * Inputs       :   frequency - current tone frequency
+ *                  out_note - Tone detected
+ *                  octave - base octave of current detected tone
+ *                  error - +/- difference in detected frequency from expected tone frequency
+ */
 void get_tuning_data(int32_t frequency, note_t* out_note, uint32_t* octave, float* error) {
     uint32_t base_octave;
     float min_err = FLT_MAX;

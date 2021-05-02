@@ -84,16 +84,16 @@
 #define MAX_REG     8
 
 // Pointer to RX data, and RX data buffer
-uint8_t RXData[MAX_REG] = {0};
-uint8_t RXDataPointer;
+volatile uint8_t RXData[MAX_REG] = {0};
+volatile uint8_t RXDataPointer;
 
 // TX data buffer and counter
-uint8_t TXData[MAX_REG]= {0};
-uint8_t TXByteCtr=255;
-uint8_t state=0;            //1=read time in process, 0=ready for next read time call
+volatile uint8_t TXData[MAX_REG]= {0};
+volatile uint8_t TXByteCtr=255;
+volatile uint8_t state=0;            //1=read time in process, 0=ready for next read time call
 
 //used to change from write to read commands in case of writing start location and then reading from that
-uint8_t ChangeMode=0;       //1=MSP in RX mode, 0=MSP in TX mode
+volatile uint8_t ChangeMode=0;       //1=MSP in RX mode, 0=MSP in TX mode
 
 /*
  * Function     :   void init_i2c(void)

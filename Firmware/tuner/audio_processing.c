@@ -1,9 +1,11 @@
-/*
- * audio_processing.c
- *
- *  Created on: Apr 16, 2021
- *      Author: vishn
- */
+/*******************************************************************************
+ * Project  :   Embedded Tuner
+ * File     :   LCD_240x320.h
+ * Date     :   04/16/2021
+ * Reference:   Code taken from boostxl_edumkii_microphonefft_msp432p401r_MSP_EXP432P401R_nortos_ccs project in SDK
+ * Modifications    :   implemented ADC in bare metal
+ *                      performed frequency calculation from FFT output
+ *******************************************************************************/
 
 #include "audio_processing.h"
 #include "clock_and_timer.h"
@@ -61,10 +63,15 @@ Timer_A_PWMConfig pwmConfig =
 };
 
 
+/*
+ * Function     :   void init_audio_peripherals(void)
+ * Brief        :   Initializes the TPM, ADC, and DMA
+ */
 void init_audio_peripherals(void) {
     //CLK_Init();
     Timer_A_generatePWM(TIMER_A0_BASE, &pwmConfig);
 
+    //student written code//
     ADC14->CTL0 &= ~ADC14_CTL0_ENC; //disable adc
     ADC14->CTL0 |= ADC14_CTL0_ON | ADC14_CTL0_SSEL__MCLK; //turn on ADC14 and route MCLK (48 MHz) to it
     ADC14->CTL0 |= ADC_TRIGGER_SOURCE1; //ADC triggers off of Timer0
@@ -122,10 +129,14 @@ void init_audio_peripherals(void) {
      * hardware should take over and transfer/receive all bytes */
     MAP_DMA_enableChannel(7);
     //MAP_ADC14_enableConversion();
+    //student code
     ADC14->CTL0 |= ADC14_CTL0_ENC; //enable adc
 }
 
-
+/*
+ * Function     :   void init_hanning_window(void)
+ * Brief        :   Initializes Hanning window for windowing samples
+ */
 void init_hanning_window(void) {
     int n;
     for(n = 0; n < SAMPLE_LENGTH; n++)
@@ -134,7 +145,11 @@ void init_hanning_window(void) {
     }
 }
 
-
+/*
+ * Function     :   void get_frequency_from_samples(int32_t* frequency)
+ * Brief        :   Performs windowing and FFT on sample buffer, and gets the frequency
+ * Inputs       :   frequency - frequency of signal stored in sample buffer
+ */
 void get_frequency_from_samples(int32_t* frequency) {
     /* Code taken from boostxl_edumkii_microphonefft_msp432p401r_MSP_EXP432P401R_nortos_ccs project in SDK */
     MAP_PCM_gotoLPM0();
@@ -181,14 +196,18 @@ void get_frequency_from_samples(int32_t* frequency) {
     uint32_t maxIndex = 0;
 
     arm_max_q15(data_output, fftSize, &maxValue, &maxIndex);
+    //student code
     *frequency = (maxIndex << 2);
 }
 
-
-/* Completion interrupt for ADC14 MEM0
+/*
+ * Function     :   void DMA_INT1_IRQHandler(void)
+ * Brief        :   DMA IRQ Handler
+ *
  * Code taken from boostxl_edumkii_microphonefft_msp432p401r_MSP_EXP432P401R_nortos_ccs project in SDK */
 void DMA_INT1_IRQHandler(void)
 {
+    /* Code taken from boostxl_edumkii_microphonefft_msp432p401r_MSP_EXP432P401R_nortos_ccs project in SDK */
     /* Switch between primary and alternate bufferes with DMA's PingPong mode */
     if(DMA_getChannelAttribute(7) & UDMA_ATTR_ALTSELECT)
     {
